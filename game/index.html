@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Jakarta City — an open-world crime game</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0e13; font-family: 'Segoe UI', Arial, sans-serif; }
+  #game { position: fixed; inset: 0; }
+  #game canvas { display: block; }
+  .hud { position: fixed; z-index: 5; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.8); pointer-events: none; }
+  #topright { top: 14px; right: 18px; text-align: right; }
+  #money { font-size: 30px; font-weight: 800; color: #7ddb6a; letter-spacing: .5px; }
+  #clock { font-size: 17px; font-weight: 700; opacity: .92; margin-top: 1px; }
+  #stars { font-size: 21px; letter-spacing: 3px; margin-top: 2px; }
+  #weaponbox { margin-top: 6px; background: rgba(10,13,18,.55); border-radius: 8px; padding: 6px 10px; display: inline-block; }
+  #wname { font-size: 12px; letter-spacing: 2px; opacity: .85; display: flex; gap: 7px; align-items: center; justify-content: flex-end; }
+  #wicon { font-size: 17px; }
+  #ammo { font-size: 27px; font-weight: 800; text-align: right; }
+  #ammo-small { font-size: 15px; opacity: .75; font-weight: 600; }
+  #bars { top: auto; left: 18px; bottom: 238px; width: 216px; }
+  .bar { height: 9px; background: rgba(255,255,255,.16); border-radius: 4px; overflow: hidden; margin-top: 4px; }
+  #health-fill { height: 100%; background: #f4f6f8; width: 100%; transition: width .15s; }
+  #armor-fill { height: 100%; background: #3a7bd5; width: 50%; transition: width .15s; }
+  #bustbar { height: 6px; }
+  #bust-fill { height: 100%; background: #5aa2ff; width: 0%; }
+  #minimap-wrap { left: 18px; bottom: 18px; width: 216px; height: 216px; border-radius: 10px; overflow: hidden; border: 2px solid rgba(255,255,255,.25); }
+  #minimap { width: 216px; height: 216px; display: block; }
+  #zone { left: 18px; bottom: 278px; font-size: 16px; font-style: italic; font-weight: 600; opacity: .95; }
+  #vehname { right: 18px; bottom: 24px; font-size: 19px; font-weight: 700; font-style: italic; opacity: 0; transition: opacity .3s; }
+  #prompt { left: 50%; bottom: 120px; transform: translateX(-50%); font-size: 17px; font-weight: 700; background: rgba(10,13,18,.6); padding: 7px 16px; border-radius: 20px; white-space: nowrap; }
+  #objective { top: 14px; left: 18px; font-size: 15px; font-weight: 700; background: rgba(10,13,18,.55); padding: 8px 13px; border-radius: 8px; border-left: 4px solid #2eff7a; max-width: 44vw; }
+  #toast { left: 50%; top: 96px; transform: translateX(-50%); font-size: 21px; font-weight: 800; color: #ffd75e; opacity: 0; transition: opacity .3s; text-align: center; max-width: 86vw; }
+  #crime { left: 50%; top: 58px; transform: translateX(-50%); font-size: 16px; font-weight: 700; color: #ff8a7a; letter-spacing: 1px; opacity: 0; transition: opacity .3s; }
+  #wflash { left: 50%; bottom: 190px; transform: translateX(-50%); font-size: 26px; font-weight: 800; letter-spacing: 2px; opacity: 0; transition: opacity .25s; }
+  #crosshair { left: 50%; top: 50%; transform: translate(-50%,-50%); font-size: 15px; opacity: .8; }
+  #wwheel { left: 50%; top: 50%; transform: translate(-50%,-50%); display: none; gap: 8px; z-index: 8; }
+  .wslot { background: rgba(10,13,18,.78); border: 2px solid rgba(255,255,255,.25); border-radius: 10px; padding: 10px 8px; width: 92px; text-align: center; font-size: 12px; font-weight: 700; }
+  .wslot.sel { border-color: #ffd75e; background: rgba(60,48,10,.85); }
+  .wslot .wic { font-size: 22px; margin-bottom: 4px; }
+  .wslot .wam { opacity: .75; font-size: 11px; margin-top: 3px; }
+  #endscreen { inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; background: rgba(5,6,9,.55); z-index: 9; }
+  #end-title { font-size: 74px; font-weight: 900; letter-spacing: 8px; }
+  #end-sub { font-size: 17px; margin-top: 10px; opacity: .9; }
+  #start { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; flex-direction: column; background: linear-gradient(180deg, rgba(5,8,14,.25), rgba(5,8,14,.78)); color: #fff; text-align: center; cursor: pointer; }
+  #start h1 { font-size: 64px; font-weight: 900; letter-spacing: 4px; color: #ffd75e; text-shadow: 0 4px 22px rgba(0,0,0,.9); }
+  #start h2 { font-size: 17px; font-weight: 600; opacity: .92; margin-top: 4px; letter-spacing: 1px; }
+  .sbtn { pointer-events: auto; margin-top: 18px; background: #ffd75e; color: #14161a; border: none; font-size: 19px; font-weight: 800; letter-spacing: 1px; padding: 13px 42px; border-radius: 30px; cursor: pointer; box-shadow: 0 6px 24px rgba(0,0,0,.5); }
+  .sbtn.alt { background: rgba(255,255,255,.14); color: #fff; border: 2px solid rgba(255,255,255,.5); }
+  .sbtn:hover { filter: brightness(1.1); }
+  #controls { margin-top: 26px; font-size: 13.5px; line-height: 1.85; opacity: .88; background: rgba(8,10,14,.55); padding: 12px 22px; border-radius: 10px; }
+  #controls b { color: #ffd75e; }
+  /* touch controls */
+  #touch-ui { position: fixed; inset: 0; z-index: 6; display: none; pointer-events: none; }
+  body.touch #touch-ui { display: block; }
+  body.touch #prompt { bottom: 210px; }
+  #joy { position: absolute; left: 26px; bottom: 250px; width: 118px; height: 118px; border-radius: 50%; background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.3); pointer-events: auto; }
+  #joy-knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,.35); transform: translate(-50%,-50%); }
+  .tbtn { position: absolute; pointer-events: auto; width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,.13); border: 2px solid rgba(255,255,255,.35); color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .tbtn.on { background: rgba(255,215,94,.5); }
+  #btn-fire { right: 30px; bottom: 260px; width: 78px; height: 78px; }
+  #btn-act { right: 122px; bottom: 246px; }
+  #btn-weap { right: 34px; bottom: 356px; }
+  #btn-reload { right: 122px; bottom: 330px; }
+  #btn-brake { right: 210px; bottom: 246px; }
+  #btn-horn { right: 210px; bottom: 330px; }
+  @media (max-width: 700px) {
+    #start h1 { font-size: 42px; }
+    #minimap-wrap { width: 150px; height: 150px; }
+    #minimap { width: 150px; height: 150px; }
+    #bars { bottom: 172px; width: 150px; }
+    #zone { bottom: 208px; }
+    #money { font-size: 23px; }
+  }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.min.js" } }
+</script>
+</head>
+<body>
+<div id="game"></div>
+
+<div class="hud" id="topright">
+  <div id="money">Rp 250,000</div>
+  <div id="clock">10:00</div>
+  <div id="stars">☆☆☆☆☆</div>
+  <div id="weaponbox">
+    <div id="wname"><span id="wname-text">Pistol</span><span id="wicon">🔫</span></div>
+    <div id="ammo"><span id="ammo-big">12</span> <span id="ammo-small">/ 240</span></div>
+  </div>
+</div>
+<div class="hud" id="objective"></div>
+<div class="hud" id="crime"></div>
+<div class="hud" id="toast"></div>
+<div class="hud" id="bars">
+  <div class="bar"><div id="health-fill"></div></div>
+  <div class="bar"><div id="armor-fill"></div></div>
+  <div class="bar" id="bustbar"><div id="bust-fill"></div></div>
+</div>
+<div class="hud" id="zone">Jl. M.H. Thamrin</div>
+<div class="hud" id="minimap-wrap"><canvas id="minimap" width="216" height="216"></canvas></div>
+<div class="hud" id="vehname"></div>
+<div class="hud" id="prompt"></div>
+<div class="hud" id="wflash"></div>
+<div class="hud" id="crosshair">·</div>
+<div class="hud" id="wwheel"></div>
+
+<div class="hud" id="endscreen">
+  <div id="end-title">WASTED</div>
+  <div id="end-sub"></div>
+</div>
+
+<div id="touch-ui">
+  <div id="joy"><div id="joy-knob"></div></div>
+  <div class="tbtn" id="btn-fire">FIRE</div>
+  <div class="tbtn" id="btn-act">ENTER</div>
+  <div class="tbtn" id="btn-weap">SWAP</div>
+  <div class="tbtn" id="btn-reload">RELOAD</div>
+  <div class="tbtn" id="btn-brake">JUMP</div>
+  <div class="tbtn" id="btn-horn">HORN</div>
+</div>
+
+<div id="start">
+  <h1>JAKARTA CITY</h1>
+  <h2>An open-world crime game — Thamrin · Bundaran HI · Sudirman</h2>
+  <button class="sbtn" id="btn-new">NEW GAME</button>
+  <button class="sbtn alt" id="btn-continue" style="display:none">CONTINUE</button>
+  <div id="controls">
+    <b>WASD</b> Move / Drive &nbsp;·&nbsp; <b>Mouse</b> Camera &nbsp;·&nbsp; <b>Click</b> Shoot / Attack<br>
+    <b>Shift</b> Sprint &nbsp;·&nbsp; <b>Space</b> Jump / Handbrake &nbsp;·&nbsp; <b>F</b> Enter / Exit vehicle<br>
+    <b>R</b> Reload / Workshop service &nbsp;·&nbsp; <b>Scroll / 1–6</b> Weapons &nbsp;·&nbsp; <b>Tab</b> Weapon wheel<br>
+    <b>H</b> Horn &nbsp;·&nbsp; <b>N</b> Skip time &nbsp;·&nbsp; <b>M</b> Mute &nbsp;·&nbsp; Eat at food stalls to heal
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
